@@ -11,10 +11,12 @@ import (
 
 type Log struct {
 	dir      string
-	log_file string
+	logFile  string //xxx.log
 	fd       *os.File 
 	buffer   []byte
 	capacity int64 
+	sync     bool
+	syncSize int   
 
 }
 
@@ -58,7 +60,7 @@ func (l *Log) ReadBatchRecordAt(offset int64, batchSize int) {
 
 //当文件不够写的时候生成新的日志文件
 func (l *Log) NewLogFile() bool {
-	logFileName := l.log_file
+	logFileName := l.logFile
 	index := str2Int(findDigit(logFileName))
 	logFileName = fmt.Sprintf("%d.log", index+1)
 	fd, err := os.OpenFile(logFileName, os.O_RDWR|os.O_CREATE, os.ModePerm)
@@ -66,7 +68,7 @@ func (l *Log) NewLogFile() bool {
 		panic(fmt.Sprintf("can't open log file %s", logFileName))
 	}
 
-	l.log_file = logFileName
+	l.logFile = logFileName
 	l.fd.Close()
 	l.fd = fd
 	return true
@@ -82,7 +84,7 @@ func NewLog(dir string, capacity int64) *Log {
 		panic(fmt.Sprintf("can't open log file %s", logName))
 	
 	}
-	return &Log{dir:dir, log_file: logName, fd:fd, buffer: make([]byte, 1024), capacity:capacity}
+	return &Log{dir:dir, logFile: logName, fd:fd, buffer: make([]byte, 1024), capacity:capacity}
 }
 
 // 验证一个日志的文件名称符合xxx.log的格式，xxx是一个整数
@@ -106,7 +108,7 @@ func isLogFileName(filename string) bool {
 
 }
 
-
+// 得到最新的日志名称
 func genLogName(dir string, capacity int64) string {
 
 	files, _ :=ioutil.ReadDir(dir)
