@@ -10,11 +10,20 @@ import (
 
 func main() {
    
-    r := kv.NewRecord("abc", "def", "d")
-    r2:= kv.NewRecord("ab", "def", "d")
+    
+    log := kv.NewLog("d://fortest", 4*1024*1024)
+    kv := kv.NewRecord("1","2", "P")
+    v := make([]int, 1000)
+    for i, _ := range v {
+        //k := fmt.Sprintf("%d", i)
+        //v := fmt.Sprintf("%d", i+1)
+        i+=1
+        kv.PutKey("ab")
+        kv.PutValue("cd")
+        log.Append(kv)
+    }
 
-    fmt.Println(len(string(r2.ToBytes())))
-    f
+
 
     
 

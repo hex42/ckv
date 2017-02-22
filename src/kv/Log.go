@@ -23,16 +23,17 @@ func (l *Log) Append(record *Record) bool {
 	bytes := record.ToBytes()
 	n, _ := l.fd.Seek(0, 2)
 	if n > l.capacity {
-		return false
+		panic(fmt.Sprintf("kv item too big %d bytes", len(bytes)))
 	}
 	if n+ int64(len(bytes)) > l.capacity {
 		l.NewLogFile()
 	}
 	l.fd.Write(bytes)
-	l.fd.Sync()
+	//l.fd.Sync()
 	return true
 }
 
+/*
 func (l *Log) ReadAt(offset int64) {
 	buf := [13]byte{}
 	n, _ := l.fd.ReadAt(buf[:], offset)
@@ -48,9 +49,11 @@ func (l *Log) ReadAt(offset int64) {
 	//cap or len	
 }
 
+*/
 
-func (l *log) ReadBatchRecordAt(offset int64, batchSize int) {
-	
+
+func (l *Log) ReadBatchRecordAt(offset int64, batchSize int) {
+
 }
 
 //当文件不够写的时候生成新的日志文件
@@ -157,19 +160,27 @@ type Record struct {
 	op    string
 }
 
+
+
 //Record的格式 op|ksize|vsize|checksum|key|value
 func (r *Record) ToBytes() []byte {
 	ksize := int2Byte(len(r.key))
-	vsize := int2Byte(len(r.value))
-	fmt.Println(ksize)
+	vsize := int2Byte(len(r.value))	
 	//这里的转换可能会造成bug
 	content := []byte(r.key+r.value)
 	checksum := int2Byte(int(crc32.ChecksumIEEE(content)) )
-	fmt.Println(checksum)
 
 	return []byte( fmt.Sprintf("%s%s%s%s%s%s", 
 						r.op, ksize, vsize, checksum, r.key, r.value))
 		
+}
+
+func (r *Record) PutKey(key string) {
+	r.key = key
+}
+
+func (r *Record) PutValue(value string) {
+	r.value = value
 }
 
 func NewRecord(key string, value string, op string) *Record {
