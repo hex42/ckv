@@ -12,12 +12,19 @@ import (
 type Log struct {
 	dir      string
 	logFile  string //xxx.log
+	cacheFd  map[string]*os.File
 	fd       *os.File 
 	buffer   []byte
-	capacity int64 
-	sync     bool
-	syncSize int   
+	capacity int64	//单个log的最大容量 
+	sync     bool   //Write操作是否市同步的
+	syncSize int64  //允许缓存的大小
+	writeSize int64 //已经缓存的大小
 
+}
+
+type offSet struct {
+	logFile  string
+	off      int64
 }
 
 
@@ -30,38 +37,79 @@ func (l *Log) Append(record *Record) bool {
 	if n+ int64(len(bytes)) > l.capacity {
 		l.NewLogFile()
 	}
-	l.fd.Write(bytes)
-	//l.fd.Sync()
+
+	if l.sync {
+		l.fd.Write(bytes)
+		l.fd.Sync()
+	
+	}else{
+		l.fd.Write(bytes)
+		l.writeSize += len(bytes)
+		if l.writeSize >  l.syncSize {
+			l.fd.Sync()
+			l.writeSize = 0
+		}
+	}
 	return true
 }
 
-/*
-func (l *Log) ReadAt(offset int64) {
-	buf := [13]byte{}
-	n, _ := l.fd.ReadAt(buf[:], offset)
+
+func (l *Log) ReadAt(offset *offSet) *Record, *offSet {
+
+	logFile := offset.logFile
+	fd, ok := l.cacheFd[logFile]
+	if !ok {
+		fd = os.Open(logFile)
+		l.cacheFd[logFile] = fd
+	}
+
+	buf := l.buffer[0:13]
+	n, _ := l.fd.ReadAt(buf, offset)
 	if n!=13 {
-		panic("Supposed to read 13 bytes")
+		panic(fmt.Sprintf("broken log file %s", logFile))
 	}
 	ksize, vsize := Byte2Int(buf[1:5]), Byte2Int(buf[5:9])
-	op, checksum := string(buf[0:1]), Byte2Int(buf[9:13])
+	op, checksum := string(buf[0:1]), string(buf[9:13])
 	offset += 13
+	buf = l.buffer[0:ksize]
+	n, _ = l.fd.ReadAt(buf, offset)
+	if n != ksize {
+		panic(fmt.Sprintf("broken log file %s", logFile))
+	}
+	key := string(buf)
+	value := ""
 
-	// 这边是要完成的。
-	
-	//cap or len	
+	if vsize != 0 {
+		offset += ksize
+		buf = l.buffer[0:vsize]
+		n, _ = l.fd.ReadAt(buf, offset)
+		if n != vsize {
+			panic(fmt.Sprintf("broken log file %s", logFile))
+		}
+		value = string(buf)
+	}
+
+	offset += vsize
+
+	//check the checksum
+
+	return &Record{key: key, value: value, checksum: checksum, op: op},
+			&offSet{logFile: logFile, off: offset}
+
 }
 
-*/
 
 
-func (l *Log) ReadBatchRecordAt(offset int64, batchSize int) {
+//read all records in a log file 
+func (l *Log) ReadRecords(logFile string) {
+
 
 }
 
 //当文件不够写的时候生成新的日志文件
 func (l *Log) NewLogFile() bool {
-	logFileName := l.logFile
-	index := str2Int(findDigit(logFileName))
+	oldLogFileName := l.logFile
+	index := str2Int(findDigit(oldLogFileName))
 	logFileName = fmt.Sprintf("%d.log", index+1)
 	fd, err := os.OpenFile(logFileName, os.O_RDWR|os.O_CREATE, os.ModePerm)
 	if err != nil {
@@ -71,10 +119,16 @@ func (l *Log) NewLogFile() bool {
 	l.logFile = logFileName
 	l.fd.Close()
 	l.fd = fd
+	fd, err := os.Open(oldLogFileName)
+	if err != nil {
+		panic(fmt.Sprintf("can't open log file %s", oldLogFileName)
+	}
+	
+	l.cacheFd[oldLogFileName] = fd
 	return true
 }
 
-func NewLog(dir string, capacity int64) *Log {
+func NewLog(dir string, capacity int64, sync bool, syncSize int64) *Log {
 	os.MkdirAll(dir, os.ModeDir)
 	os.Chdir(dir)
 	logName := genLogName(dir, capacity)
@@ -84,7 +138,8 @@ func NewLog(dir string, capacity int64) *Log {
 		panic(fmt.Sprintf("can't open log file %s", logName))
 	
 	}
-	return &Log{dir:dir, logFile: logName, fd:fd, buffer: make([]byte, 1024), capacity:capacity}
+	return &Log{dir:dir, logFile: logName, fd:fd, buffer: make([]byte, 1024), 
+				capacity:capacity, sync: sync, syncSize: syncSize}
 }
 
 // 验证一个日志的文件名称符合xxx.log的格式，xxx是一个整数
@@ -152,9 +207,6 @@ func (l *Log) WriteAt(record *Record, offset int) {
 
 
 
-
-
-
 type Record struct {
 	key   string
 	value string
@@ -164,29 +216,27 @@ type Record struct {
 
 
 
-//Record的格式 op|ksize|vsize|checksum|key|value
+//Record的格式 op|ksize|vsize|checksum|key|value op id limited to P or D
 func (r *Record) ToBytes() []byte {
 	ksize := int2Byte(len(r.key))
 	vsize := int2Byte(len(r.value))	
-	//这里的转换可能会造成bug
-	content := []byte(r.key+r.value)
-	checksum := int2Byte(int(crc32.ChecksumIEEE(content)) )
 
 	return []byte( fmt.Sprintf("%s%s%s%s%s%s", 
 						r.op, ksize, vsize, checksum, r.key, r.value))
 		
 }
 
-func (r *Record) PutKey(key string) {
-	r.key = key
+func (r *Record) Size() int {
+	return len(r.op) + len(r.checksum) + len(r.key) + len(r.value)
 }
 
-func (r *Record) PutValue(value string) {
-	r.value = value
-}
+
 
 func NewRecord(key string, value string, op string) *Record {
-	return &Record{key:key, value:value, op:op}
+	//这里的转换可能会造成bug
+	content := []byte(r.key+r.value)
+	checksum := int2Byte(int(crc32.ChecksumIEEE(content)) )
+	return &Record{key:key, value:value, op:op, checksum: }
 }
 
 
