@@ -16,8 +16,8 @@ func TestLogAsyncAppend(t *testing.T) {
 
 func TestLogSyncAppend(t *testing.T) {
 
-	log := NewLog("d://fortest", 1024*4, false, 512)
-	seed := make([]int, 1024)
+	log := NewLog("d://fortest", 1024*4, true, 0)
+	seed := make([]int, 1024*1024)
 	fmt.Println(len(seed))
 	for i, _ := range seed {
 		seed[i] = i+1
@@ -33,7 +33,7 @@ func TestLogSyncAppend(t *testing.T) {
 
 func TestReadLogFile(t *testing.T) {
 	log := NewLog("d://fortest", 1024*1024, true, 1024*16)
-	records := log.ReadLogFile("0.log")
+	records := log.ReadLogFile("2.log")
 	for _, record := range records {
 		fmt.Printf("%s %s", record.key, record.value)
 	}
