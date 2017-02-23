@@ -29,19 +29,22 @@ type offSet struct {
 }
  
 
-func (l *Log) Append(record *Record) bool {
+func (l *Log) Append(record *Record) *offSet {
 	bytes := record.ToBytes()
 	size := int64(len(bytes))
-
+	
 	if size > l.capacity {
-		return false
+		return &offSet{logFile: l.logFile, off: -1}
 	}
 
 	if l.writeAmount + size > l.capacity {
 		l.NewLogFile()
 	}
-
-	l.fd.Write(bytes)
+	off := &offSet{logFile: l.logFile, off: l.writeAmount}
+	n, err := l.fd.Write(bytes)
+	if err != nil || n != size {
+		panic("Got error on write")
+	} 
 	l.writeAmount += size
 	l.writeSize += size
 
@@ -54,7 +57,7 @@ func (l *Log) Append(record *Record) bool {
 			l.writeSize = 0
 		}
 	}
-	return true
+	return off
 }
 
 // 当读到eof时， offset.off = -1
@@ -128,6 +131,11 @@ func (l *Log) ReadLogFile(logFile string) []*Record {
 	}
 
 	return records
+}
+
+
+//整理日志文件
+func (l *Log) shrink() bool {
 }
 
 
