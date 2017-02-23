@@ -16,9 +16,11 @@ type Log struct {
 	fd       *os.File 
 	buffer   []byte
 	capacity int64	//单个log的最大容量 
-	sync     bool   //Write操作是否市同步的
+	sync     bool   //Write操作是否是同步的
 	syncSize int64  //允许缓存的大小
 	writeSize int64 //已经缓存的大小
+
+
 
 }
 
@@ -26,7 +28,7 @@ type offSet struct {
 	logFile  string
 	off      int64
 }
-
+ 
 
 func (l *Log) Append(record *Record) bool {
 	bytes := record.ToBytes()
@@ -44,7 +46,7 @@ func (l *Log) Append(record *Record) bool {
 	
 	}else{
 		l.fd.Write(bytes)
-		l.writeSize += len(bytes)
+		l.writeSize += int64(len(bytes))
 		if l.writeSize >  l.syncSize {
 			l.fd.Sync()
 			l.writeSize = 0
@@ -53,93 +55,112 @@ func (l *Log) Append(record *Record) bool {
 	return true
 }
 
+// 当读到eof时， offset.off = -1
+func (l *Log) ReadAt(offset *offSet) (*Record, *offSet) {
 
-func (l *Log) ReadAt(offset *offSet) *Record, *offSet {
-
-	logFile := offset.logFile
+	off, logFile := offset.off, offset.logFile
 	fd, ok := l.cacheFd[logFile]
 	if !ok {
-		fd = os.Open(logFile)
+		fd, _ = os.Open(logFile)
 		l.cacheFd[logFile] = fd
 	}
 
 	buf := l.buffer[0:13]
-	n, _ := l.fd.ReadAt(buf, offset)
+	n, _ := fd.ReadAt(buf, off)
 	if n!=13 {
 		panic(fmt.Sprintf("broken log file %s", logFile))
 	}
-	ksize, vsize := Byte2Int(buf[1:5]), Byte2Int(buf[5:9])
+	ksize, vsize := byte2Int(buf[1:5]), byte2Int(buf[5:9])
 	op, checksum := string(buf[0:1]), string(buf[9:13])
-	offset += 13
+
+	fmt.Println(ksize, vsize)
+
+	off += 13
 	buf = l.buffer[0:ksize]
-	n, _ = l.fd.ReadAt(buf, offset)
+	n, _ = fd.ReadAt(buf, off)
 	if n != ksize {
 		panic(fmt.Sprintf("broken log file %s", logFile))
 	}
 	key := string(buf)
 	value := ""
-
+	off += int64(ksize)
 	if vsize != 0 {
-		offset += ksize
 		buf = l.buffer[0:vsize]
-		n, _ = l.fd.ReadAt(buf, offset)
+		n, _ = fd.ReadAt(buf, off)
 		if n != vsize {
 			panic(fmt.Sprintf("broken log file %s", logFile))
 		}
 		value = string(buf)
 	}
 
-	offset += vsize
+	off += int64(vsize) 
+	fileInfo, _ := fd.Stat()
 
+	if fileInfo.Size() == off {
+		off = -1
+	}
+	offset.off = off
+
+	fmt.Println(op,len(checksum), ksize, vsize,key, value, off)
 	//check the checksum
-
-	return &Record{key: key, value: value, checksum: checksum, op: op},
-			&offSet{logFile: logFile, off: offset}
+	return &Record{key: key, value: value, checksum: checksum, op: op}, offset
 
 }
 
 
+func (l *Log) ReadLogFile(logFile string) []*Record {
+	offset:= &offSet{logFile: logFile, off: 0}
+	records := []*Record{}
 
-//read all records in a log file 
-func (l *Log) ReadRecords(logFile string) {
+	for {
+		record, offset := l.ReadAt(offset)
+		records = append(records, record)
+		fmt.Println(offset.off)
+		if offset.off == -1 {
+			break
+		}
 
+	}
 
+	return records
 }
+
 
 //当文件不够写的时候生成新的日志文件
 func (l *Log) NewLogFile() bool {
 	oldLogFileName := l.logFile
 	index := str2Int(findDigit(oldLogFileName))
-	logFileName = fmt.Sprintf("%d.log", index+1)
+	logFileName := fmt.Sprintf("%d.log", index+1)
 	fd, err := os.OpenFile(logFileName, os.O_RDWR|os.O_CREATE, os.ModePerm)
 	if err != nil {
 		panic(fmt.Sprintf("can't open log file %s", logFileName))
 	}
 
 	l.logFile = logFileName
+	l.fd.Sync()
 	l.fd.Close()
 	l.fd = fd
-	fd, err := os.Open(oldLogFileName)
+	fd, err = os.Open(oldLogFileName)
 	if err != nil {
-		panic(fmt.Sprintf("can't open log file %s", oldLogFileName)
+		panic(fmt.Sprintf("can't open log file %s", oldLogFileName))
 	}
-	
+
 	l.cacheFd[oldLogFileName] = fd
 	return true
 }
 
-func NewLog(dir string, capacity int64, sync bool, syncSize int64) *Log {
-	os.MkdirAll(dir, os.ModeDir)
-	os.Chdir(dir)
-	logName := genLogName(dir, capacity)
-	fmt.Println(logName)
-	fd, err := os.OpenFile( logName, os.O_RDWR|os.O_CREATE, os.ModePerm)
-	if err != nil {
-		panic(fmt.Sprintf("can't open log file %s", logName))
-	
+
+
+//得到所有的日志文件名称
+func (l *Log) allLogFiles() []string {
+	files, _ := ioutil.ReadDir(l.dir)
+	logFiles := []string{}
+	for _, file := range files {
+		if !file.IsDir() && isLogFileName(file.Name()) {
+			logFiles = append(logFiles, file.Name())
+		}
 	}
-	return &Log{dir:dir, logFile: logName, fd:fd, buffer: make([]byte, 1024), 
-				capacity:capacity, sync: sync, syncSize: syncSize}
+	return logFiles
 }
 
 // 验证一个日志的文件名称符合xxx.log的格式，xxx是一个整数
@@ -163,7 +184,22 @@ func isLogFileName(filename string) bool {
 
 }
 
-// 得到最新的日志名称
+
+func NewLog(dir string, capacity int64, sync bool, syncSize int64) *Log {
+	os.MkdirAll(dir, os.ModeDir)
+	os.Chdir(dir)
+	logName := genLogName(dir, capacity)
+	fmt.Println(logName)
+	fd, err := os.OpenFile( logName, os.O_RDWR|os.O_CREATE, os.ModePerm)
+	if err != nil {
+		panic(fmt.Sprintf("can't open log file %s", logName))
+	
+	}
+	return &Log{dir:dir, logFile: logName, fd:fd, buffer: make([]byte, 1024), 
+				capacity:capacity, sync: sync, syncSize: syncSize, cacheFd: map[string]*os.File{} }
+}
+
+// 到最新的日志名称
 func genLogName(dir string, capacity int64) string {
 
 	files, _ :=ioutil.ReadDir(dir)
@@ -222,7 +258,7 @@ func (r *Record) ToBytes() []byte {
 	vsize := int2Byte(len(r.value))	
 
 	return []byte( fmt.Sprintf("%s%s%s%s%s%s", 
-						r.op, ksize, vsize, checksum, r.key, r.value))
+						r.op, ksize, vsize, r.checksum, r.key, r.value))
 		
 }
 
@@ -232,11 +268,14 @@ func (r *Record) Size() int {
 
 
 
-func NewRecord(key string, value string, op string) *Record {
+func NewRecord(op string, key string, value string) *Record {
 	//这里的转换可能会造成bug
-	content := []byte(r.key+r.value)
+	if op == "D" {
+		value = ""
+	}
+	content := []byte(key+value)
 	checksum := int2Byte(int(crc32.ChecksumIEEE(content)) )
-	return &Record{key:key, value:value, op:op, checksum: }
+	return &Record{key:key, value:value, op:op, checksum: string(checksum) }
 }
 
 
@@ -289,10 +328,6 @@ func byte2Int(bytes []byte) int {
 //生成4个字节
 func int2Byte(i int) []byte {
     b := []byte{}
-    if i==0 {
-        b = append(b, byte(0))
-        return b 
-    }
 
     for i!=0 {
         mod := i%256

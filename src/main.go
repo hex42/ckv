@@ -1,7 +1,7 @@
 package main
 
 import (
-    //"kv"
+    "kv"
   
     "fmt"
     //"hash/crc32"
@@ -12,18 +12,27 @@ import (
 
 func main() {
 
-	v := make(map[string]string)
-	v["abc"] = "def"
-	d := v["abc"]
-
-	fmt.Println(d)
-    d, ok := v["abc"]
-    fmt.Println(ok)
+	TestLogAppend()
 }
 
 
 func do(s string) {
     fmt.Println(len(s))
     fmt.Println(s)
+
+}
+
+
+func TestLogAppend() {
+    log := kv.NewLog("d://fortest", 16*1024*1024, false, 1024*16)
+    seed := make([]int, 1024*1024)
+    fmt.Println(len(seed))
+    for i, _ := range seed {
+        seed[i] = i+1
+        key, value := fmt.Sprintf("%d", i), fmt.Sprintf("%d", seed[i])
+        record := kv.NewRecord("D", key, value)
+        log.Append(record)
+
+    }
 
 }

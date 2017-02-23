@@ -1,9 +1,15 @@
 package kv
 
+/*
+import (
+	"sync"
+)
+
+
 
 type Cache struct {
 	log *Log
-	mu  syn.Mutex
+	mu  sync.Mutex
 	index map[string]offSet
 	mem  map[string]
 	memSize int64
@@ -29,4 +35,4 @@ func NewCache() bool {
 }
 
 
-	
+	*/
