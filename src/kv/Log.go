@@ -28,7 +28,7 @@ type offSet struct {
 	off      int64
 }
  
-
+//如果当个kv的大小超过
 func (l *Log) Append(record *Record) *offSet {
 	bytes := record.ToBytes()
 	size := int64(len(bytes))
@@ -274,7 +274,6 @@ type Record struct {
 	value 	 string
 	checksum string
 }
-
 
 
 //Record的格式 op|ksize|vsize|checksum|key|value op id limited to P or D
