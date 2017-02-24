@@ -1,7 +1,7 @@
 package main
 
 import (
-    "kv"
+    //"kv"
   
     "fmt"
     //"hash/crc32"
@@ -12,10 +12,13 @@ import (
 
 func main() {
 
-	TestLogAppend()
+	fmt.Println(len("自是人生长恨水长东"))
+    for i, e := range "自是人生长恨水长东" {
+        fmt.Println(i, string(e))
+    }
 }
 
-
+/*
 func do(s string) {
     fmt.Println(len(s))
     fmt.Println(s)
@@ -36,3 +39,4 @@ func TestLogAppend() {
     }
 
 }
+*/

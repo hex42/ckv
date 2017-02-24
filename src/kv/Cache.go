@@ -1,12 +1,12 @@
 package kv
 
-/*
+
 import (
 	"sync"
 )
 
 
-
+/*
 type Cache struct {
 	log *Log
 	mu  sync.Mutex
@@ -67,10 +67,20 @@ func (c *Cache) Del(key string) bool {
 	mem.Size += record.Size()
 }
 
+func (c *Cache) Snapshot() bool {
+	
+
+}
+
+func (c *Cache) shrink() bool {
+	
+
+}
+
 
 func NewCache() *Cache {
 	
 }
 
+*/
 
-	*/

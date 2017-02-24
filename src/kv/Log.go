@@ -41,8 +41,8 @@ func (l *Log) Append(record *Record) *offSet {
 		l.NewLogFile()
 	}
 	off := &offSet{logFile: l.logFile, off: l.writeAmount}
-	n, err := l.fd.Write(bytes)
-	if err != nil || n != size {
+	n, err := l.fd.WriteAt(bytes, l.writeAmount)
+	if err != nil || int64(n) != size {
 		panic("Got error on write")
 	} 
 	l.writeAmount += size
@@ -60,9 +60,9 @@ func (l *Log) Append(record *Record) *offSet {
 	return off
 }
 
-// 当读到eof时， offset.off = -1
+// 当读到eof时， offset.off = -1 offset.off代表下一个record的偏移地址
 func (l *Log) ReadAt(offset *offSet) (*Record, *offSet) {
-
+	fmt.Printf("l.logFile", l.fd)
 	off, logFile := offset.off, offset.logFile
 
 	fd, ok := l.cacheFd[logFile]
@@ -76,14 +76,18 @@ func (l *Log) ReadAt(offset *offSet) (*Record, *offSet) {
 	}
 
 	buf := l.buffer[0:13]
-	n, _ := fd.ReadAt(buf, off)
+	fmt.Printf("offis %s:%d\n", offset.logFile, offset.off)
+	fmt.Print(fd)
+	n, err := fd.ReadAt(buf, off)
 	if n!=13 {
+		fmt.Print("not enough read", err)
 		panic(fmt.Sprintf("broken log file %s", logFile))
 	}
 	ksize, vsize := byte2Int(buf[1:5]), byte2Int(buf[5:9])
 	op, checksum := string(buf[0:1]), string(buf[9:13])
 
 	off += 13
+	fmt.Printf("op:ksize:vsize %s %d %d\n", op, ksize, vsize)
 	buf = l.buffer[0:ksize]
 	n, _ = fd.ReadAt(buf, off)
 	if n != ksize {
@@ -109,18 +113,20 @@ func (l *Log) ReadAt(offset *offSet) (*Record, *offSet) {
 		off = -1
 	}
 	offset.off = off
-	fmt.Println(op,len(checksum), ksize, vsize,key, value, off)
+	fmt.Println("each record:", op,len(checksum), ksize, vsize,key, value, off)
 	// if needed should check the checksum
-	return &Record{key: key, value: value, checksum: checksum, op: op}, offset
+	return &Record{op: op, key: key, value: value, checksum: checksum}, offset
 
 }
 
 
-func (l *Log) ReadLogFile(logFile string) []*Record {
+func (l *Log) ReadLogFile(logFile string) ([]*Record, []*offSet) {
 	offset:= &offSet{logFile: logFile, off: 0}
 	records := []*Record{}
+	offSets := []*offSet{}
 
 	for {
+		offSets = append(offSets, &offSet{logFile: offset.logFile, off: offset.off})
 		record, offset := l.ReadAt(offset)
 		records = append(records, record)
 		//fmt.Println(offset.off)
@@ -130,12 +136,21 @@ func (l *Log) ReadLogFile(logFile string) []*Record {
 
 	}
 
-	return records
+	return records, offSets
 }
 
 
+func (l *Log) Close() bool {
+	for _, fd := range l.cacheFd {
+		fd.Close()
+	}
+	l.fd.Close()
+	return true
+}
+
 //整理日志文件
 func (l *Log) shrink() bool {
+	return true
 }
 
 
@@ -204,14 +219,19 @@ func NewLog(dir string, capacity int64, sync bool, syncSize int64) *Log {
 	os.MkdirAll(dir, os.ModeDir)
 	os.Chdir(dir)
 	logName := genLogName(dir, capacity)
-	fmt.Println(logName)
+	fmt.Println("logName", logName)
 	fd, err := os.OpenFile(logName, os.O_RDWR|os.O_CREATE, os.ModePerm)
 	if err != nil {
 		panic(fmt.Sprintf("can't open log file %s", logName))
 	
 	}
-	return &Log{dir:dir, logFile: logName, fd:fd, buffer: make([]byte, 1024), 
-				capacity:capacity, sync: sync, syncSize: syncSize, cacheFd: map[string]*os.File{} }
+	fileInfo, _ := fd.Stat()
+	writeAmount := fileInfo.Size()
+
+	fmt.Println("writeAmount", writeAmount)
+	return &Log{dir:dir, logFile:logName, cacheFd:map[string]*os.File{}, fd:fd, 
+					buffer: make([]byte, 1024), capacity:capacity, sync:sync, syncSize:syncSize, 
+					writeSize:0, writeAmount:writeAmount }
 }
 
 // 生成最新的日志名称
@@ -249,10 +269,10 @@ func genLogName(dir string, capacity int64) string {
 
 
 type Record struct {
-	key   string
-	value string
+	op    	 string
+	key   	 string
+	value 	 string
 	checksum string
-	op    string
 }
 
 
@@ -267,8 +287,9 @@ func (r *Record) ToBytes() []byte {
 		
 }
 
+//8 是ksize+vsize
 func (r *Record) Size() int {
-	return len(r.op) + len(r.checksum) + len(r.key) + len(r.value)
+	return len(r.op) + len(r.checksum) + len(r.key) + len(r.value) + 8
 }
 
 
