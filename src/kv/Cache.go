@@ -149,6 +149,11 @@ func (c *KVStore) Snapshot() bool {
 
 }
 
+func (c *KVStore) build() bool {
+	
+	
+}
+
 func (c *KVStore) shrink() bool {
 	
 
