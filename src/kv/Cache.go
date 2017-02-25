@@ -224,7 +224,7 @@ func (kv *KVStore) shrink() bool {
 func NewKVStore(dir string, isLogSync bool, logSyncSize int64, logCapacity int64) *KVStore  {
 	log := NewLog(dir, logCapacity, isLogSync, logSyncSize)
 	kvStore := &KVStore{log:log, mu:sync.Mutex{}, index:make(map[string]*offSet), 
-							mem:make(map[string]*LRUItem), lru:NewLRU(), memSize:0, memCapacity:16*logCapacity }
+							mem:make(map[string]*LRUItem), lru:NewLRU(), memSize:0, memCapacity:4*logCapacity }
 
 	kvStore.build()
 	return kvStore
