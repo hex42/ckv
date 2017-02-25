@@ -151,10 +151,16 @@ func (l *Log) Close() bool {
 	return true
 }
 
-//整理日志文件
-func (l *Log) shrink() bool {
-	return true
+
+func (l *Log) Size() int64 {
+
 }
+
+
+func (l *Log) RemoveLogFile(logFile string) bool {
+
+}
+
 
 
 //当文件不够写的时候生成新的日志文件

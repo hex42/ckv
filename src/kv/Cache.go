@@ -211,7 +211,7 @@ func (kv *KVStore) build() bool {
 }
 
 
-// shrink的标准是啥
+// 应该要shrink的标准是啥
 func (kv *KVStore) shrink() bool {
 	fmt.Println("shrink")
 	return true
