@@ -12,21 +12,10 @@ import (
 
 func main() {
 
-	fmt.Println(len("自是人生长恨水长东"))
-    for i, e := range "自是人生长恨水长东" {
-        fmt.Println(i, string(e))
+	m := map[string]string{"abc":"def", "def":"ggg"}
+    for a, b := range m {
+        fmt.Println(a,b)
     }
-
-    type Test struct {
-        id int
-    }
-
-
-    a := &Test{id:2}
-    b := a
-    fmt.Println(a==b)
-    c := &Test{id:2}
-    fmt.Println(a==c)
 }
 
 /*

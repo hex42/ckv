@@ -60,9 +60,8 @@ func (l *Log) Append(record *Record) *offSet {
 	return off
 }
 
-// 当读到eof时， offset.off = -1 offset.off代表下一个record的偏移地址
-func (l *Log) ReadAt(offset *offSet) (*Record, *offSet) {
-	fmt.Printf("l.logFile", l.fd)
+// 当读到eof时,返回nil
+func (l *Log) ReadAt(offset *offSet) *Record {
 	off, logFile := offset.off, offset.logFile
 
 	fd, ok := l.cacheFd[logFile]
@@ -75,19 +74,30 @@ func (l *Log) ReadAt(offset *offSet) (*Record, *offSet) {
 		}
 	}
 
+	fileInfo, _ := fd.Stat()
+	if fileInfo.Size() == off {
+		return nil 
+	}
+
+	if off > fileInfo.Size() {
+		errMsg := fmt.Sprintf("offset %s:%d filesize %d", offset.logFile, offset.off, fileInfo.Size())
+		panic(errMsg)
+	}
+
+	//fmt.Printf("offset %s:%d\n", offset.logFile, offset.off)
+
 	buf := l.buffer[0:13]
-	fmt.Printf("offis %s:%d\n", offset.logFile, offset.off)
-	fmt.Print(fd)
-	n, err := fd.ReadAt(buf, off)
-	if n!=13 {
-		fmt.Print("not enough read", err)
+	n, _ := fd.ReadAt(buf, off)
+	if n != 13 {
 		panic(fmt.Sprintf("broken log file %s", logFile))
 	}
+
 	ksize, vsize := byte2Int(buf[1:5]), byte2Int(buf[5:9])
 	op, checksum := string(buf[0:1]), string(buf[9:13])
 
+	//fmt.Printf("op:ksize:vsize %s %d %d\n", op, ksize, vsize)
+
 	off += 13
-	fmt.Printf("op:ksize:vsize %s %d %d\n", op, ksize, vsize)
 	buf = l.buffer[0:ksize]
 	n, _ = fd.ReadAt(buf, off)
 	if n != ksize {
@@ -107,16 +117,9 @@ func (l *Log) ReadAt(offset *offSet) (*Record, *offSet) {
 	}
 
 	off += int64(vsize) 
-	fileInfo, _ := fd.Stat()
-
-	if fileInfo.Size() == off {
-		off = -1
-	}
-	offset.off = off
-	fmt.Println("each record:", op,len(checksum), ksize, vsize,key, value, off)
+	//fmt.Println("each record:", op,len(checksum), ksize, vsize,key, value, off)
 	// if needed should check the checksum
-	return &Record{op: op, key: key, value: value, checksum: checksum}, offset
-
+	return &Record{op: op, key: key, value: value, checksum: checksum}
 }
 
 
@@ -126,14 +129,14 @@ func (l *Log) ReadLogFile(logFile string) ([]*Record, []*offSet) {
 	offSets := []*offSet{}
 
 	for {
-		offSets = append(offSets, &offSet{logFile: offset.logFile, off: offset.off})
-		record, offset := l.ReadAt(offset)
-		records = append(records, record)
-		//fmt.Println(offset.off)
-		if offset.off == -1 {
+		record := l.ReadAt(offset)
+		if record == nil {
 			break
 		}
-
+		offSets = append(offSets, &offSet{logFile: offset.logFile, off: offset.off})
+		records = append(records, record)
+		offset.off += record.Size()
+		//fmt.Println(offset.off)
 	}
 
 	return records, offSets
@@ -182,7 +185,7 @@ func (l *Log) NewLogFile() bool {
 
 
 //得到所有的日志文件名称
-func (l *Log) allLogFiles() []string {
+func (l *Log) AllLogFiles() []string {
 	files, _ := ioutil.ReadDir(l.dir)
 	logFiles := []string{}
 	for _, file := range files {
@@ -190,8 +193,20 @@ func (l *Log) allLogFiles() []string {
 			logFiles = append(logFiles, file.Name())
 		}
 	}
+	v := make([]int, len(logFiles))
+	for i, _ := range v {
+		v[i] = str2Int(findDigit(logFiles[i]))
+	}
+	
+	bubbleSort(v)
+
+	for i, _ := range v {
+		logFiles[i] = fmt.Sprintf("%d.log", v[i])
+	}
 	return logFiles
 }
+
+
 
 // 验证一个日志的文件名称符合xxx.log的格式，xxx是一个整数
 func isLogFileName(filename string) bool {
@@ -287,8 +302,8 @@ func (r *Record) ToBytes() []byte {
 }
 
 //8 是ksize+vsize
-func (r *Record) Size() int {
-	return len(r.op) + len(r.checksum) + len(r.key) + len(r.value) + 8
+func (r *Record) Size() int64 {
+	return int64(len(r.op) + len(r.checksum) + len(r.key) + len(r.value) + 8)
 }
 
 
@@ -316,7 +331,6 @@ func findDigit(filename string) string{
 }
 
 
-
 func maxInt(v []int) int {
 	m := v[0]
 	for _, e := range v {
@@ -336,8 +350,6 @@ func minInt(v []int) int {
 	}
 	return m
 }
-
-
 
 //256进制
 func byte2Int(bytes []byte) int {
@@ -395,5 +407,18 @@ func int2Str(i int) string {
 	}
 	reverse(bytes)
 	return string(bytes)
+
+}
+
+
+func bubbleSort(v []int) {
+	size := len(v)
+	for i:=0; i< size; i+=1 {
+		for j:=size-1; j>i; j-=1 {
+			if v[j] < v[j-1]{
+				v[j], v[j-1] = v[j-1], v[j]
+			}
+		}
+	}
 
 }

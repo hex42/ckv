@@ -11,16 +11,22 @@ import (
 
 func TestLog(t *testing.T) {
 	log := NewLog("d://fortest", 1024*1024, false, 1024)
+
+	records, offsets := log.ReadLogFile("0.log")
+	fmt.Printf("reading logfile 0.log read %d record\n", len(records))
+	log.Close()
+
+	log = NewLog("d://fortest", 1024, false, 128)
 	
 	rand.Seed(int64(time.Now().Nanosecond()))
 
 	key, value := make([]string, 1024), make([]string, 1024)
-	offsets := make([]*offSet, 1024)
+	offsets = make([]*offSet, 1024)
 	for i:= 0; i<1024; i+=1 {	
 		k := rand.Int()
 		v := rand.Int()
-		key[i] = fmt.Sprintf("%s", k)
-		value[i] = fmt.Sprintf("%s", v)
+		key[i] = fmt.Sprintf("%d", k)
+		value[i] = fmt.Sprintf("%d", v)
 		record := NewRecord("P", key[i], value[i])
 		offset := log.Append(record)
 		infoMsg := fmt.Sprintf("recordOffset: %s:%d recordSize:%d checksumSize:%d key: %s v: %s\n", 
@@ -30,7 +36,7 @@ func TestLog(t *testing.T) {
 	}
 
 	for i, offset := range offsets {
-		record, _ := log.ReadAt(offset)
+		record := log.ReadAt(offset)
 		if record.value != value[i] || record.key != key[i] {
 			errMsg := fmt.Sprintf("Write %s:%s, Got %s:%s", key[i], value[i], record.key, record.value)
 			panic(errMsg)
@@ -55,7 +61,7 @@ func TestLog(t *testing.T) {
 	}
 
 	for i, offset := range offsets {
-		record, _ := log.ReadAt(offset)
+		record := log.ReadAt(offset)
 		if record.value != value[i] || record.key != key[i] {
 			errMsg := fmt.Sprintf("Write %s:%s, Got %s:%s", key[i], value[i], record.key, record.value)
 			panic(errMsg)
@@ -63,7 +69,6 @@ func TestLog(t *testing.T) {
 			fmt.Println("success")
 		}
 	}
-
 
 	log.Close()
 	
@@ -100,6 +105,8 @@ func TestLogSyncAppend(t *testing.T) {
 
 */
 
+
+/*
 func TestReadLogFile(t *testing.T) {
 	log := NewLog("d://fortest", 1024*1024, true, 1024*16)
 	records, _ := log.ReadLogFile("3.log")
@@ -108,6 +115,8 @@ func TestReadLogFile(t *testing.T) {
 	}
 	log.Close()
 }
+
+/*
 
 
 /*
