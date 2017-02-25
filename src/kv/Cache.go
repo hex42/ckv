@@ -187,7 +187,6 @@ func (kv *KVStore) Close() bool {
 }
 
 func (kv *KVStore) Snapshot() bool {
-
 	//找出最小的offset
 	return true
 	
@@ -212,13 +211,48 @@ func (kv *KVStore) build() bool {
 
 
 // 应该要shrink的标准是啥
-func (kv *KVStore) shrink() bool {
-	fmt.Println("shrink")
-	return true
+func (kv *KVStore) shrink() {
+
+	if !kv.isShrinkable() {
+		return 
+	}
+	logFiles := kv.log.AllLogFiles()
+	size := len(logFiles)
+	logFiles = logFiles[0:size-1]
+	for _, logFile := range logFiles {
+		kv.shrinkFile(logFile)
+	}
+
 	
 
 }
 
+//
+func (kv *KVStore) shrinkFile(logFile string) {
+	records, offsets := kv.log.ReadLogFile(logFile)
+	size := len(records)
+	for i:=0; i<size; i+=1 {
+		key := records[i].key
+		offset := kv.index[key]
+		// only the newst record should be append, other just throw away
+		if offset.off == offsets[i].off && offset.logFile == offsets[i].logFile {
+			newOffset := kv.log.Append(records[i])
+			kv.index[key] = newOffset
+		}
+	}
+	kv.log.RemoveLogFile(logFile)
+}
+
+// 
+func (kv *KVStore) isShrinkable() bool {
+	avgSize := float32(kv.memSize) / float32(len(kv.mem))
+	avgSize2 := float32(kv.log.Size()) / float32(len(kv.index))
+	if avgSize2 > avgSize * 1.8 {
+		return true
+	}
+	return false
+
+}
 
 
 func NewKVStore(dir string, isLogSync bool, logSyncSize int64, logCapacity int64) *KVStore  {

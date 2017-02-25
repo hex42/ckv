@@ -16,7 +16,7 @@ func TestLog(t *testing.T) {
 	fmt.Printf("reading logfile 0.log read %d record\n", len(records))
 	log.Close()
 
-	log = NewLog("d://fortest", 1024, false, 128)
+	log = NewLog("d://fortest", 32*1024, false, 128)
 	
 	rand.Seed(int64(time.Now().Nanosecond()))
 
@@ -38,10 +38,8 @@ func TestLog(t *testing.T) {
 	for i, offset := range offsets {
 		record := log.ReadAt(offset)
 		if record.value != value[i] || record.key != key[i] {
-			errMsg := fmt.Sprintf("Write %s:%s, Got %s:%s", key[i], value[i], record.key, record.value)
+			errMsg := fmt.Sprintf("Error: Write %s:%s, Got %s:%s", key[i], value[i], record.key, record.value)
 			panic(errMsg)
-		}else{
-			fmt.Println("success")
 		}
 	}
 
@@ -63,10 +61,33 @@ func TestLog(t *testing.T) {
 	for i, offset := range offsets {
 		record := log.ReadAt(offset)
 		if record.value != value[i] || record.key != key[i] {
-			errMsg := fmt.Sprintf("Write %s:%s, Got %s:%s", key[i], value[i], record.key, record.value)
+			errMsg := fmt.Sprintf("Error: Write %s:%s, Got %s:%s", key[i], value[i], record.key, record.value)
 			panic(errMsg)
-		}else{
-			fmt.Println("success")
+		}
+	}
+
+
+
+	key, value = make([]string, 1024), make([]string, 1024)
+	offsets = make([]*offSet, 1024)
+	for i:= 0; i<1024; i+=1 {	
+		k := rand.Int()
+		//v := rand.Int()
+		key[i] = fmt.Sprintf("%d", k)
+		value[i] = ""
+		record := NewRecord("D", key[i], value[i])
+		offset := log.Append(record)
+		infoMsg := fmt.Sprintf("recordOffset: %s:%d recordSize:%d checksumSize:%d key: %s v: %s\n", 
+						offset.logFile, offset.off, record.Size(), len(record.checksum), record.key, record.value)
+		fmt.Printf(infoMsg)
+		offsets[i] = offset 
+	}
+
+	for i, offset := range offsets {
+		record := log.ReadAt(offset)
+		if record.value != value[i] || record.key != key[i] {
+			errMsg := fmt.Sprintf("Error: Write %s:%s, Got %s:%s", key[i], value[i], record.key, record.value)
+			panic(errMsg)
 		}
 	}
 

@@ -12,7 +12,7 @@ import (
 
 func TestKVStore(t *testing.T) {
 
-	kv := NewKVStore("d://fortest", false, 1024*16, 1024*1024)
+	kv := NewKVStore("/chen/test", false, 128, 32*1024)
 	rand.Seed(int64(time.Now().Nanosecond()))
 	s := make([]string, 1024*64)
 	m := make(map[string]string)
@@ -27,17 +27,34 @@ func TestKVStore(t *testing.T) {
 	}
 
 	for k, v := range m {
-		i := kv.Get(k)
-		if i != v {
-			fmt.Printf("error: store %s:%s get %s:%s", k, v, k, i)
+		v2 := kv.Get(k)
+		if v2 != v {
+			fmt.Printf("Error: store %s:%s get %s:%s", k, v, k, v2)
 		}
 	}
 
 	fmt.Printf("kv size %d\n", kv.Size())
-	v := []int{0,1, 10, 11, 12, 13, 14, 15, 16,  2, 3, 4, 5, 6, 7, 8, 9}
-	bubbleSort(v)
-	fmt.Println(v)
 	kv.Close()
+
+	kv = NewKVStore("/chen/test", false, 128, 32*1024)
+
+	for k, v := range m {
+		v2 := kv.Get(k)
+		if v2 != v {
+			fmt.Printf("Error: store %s:%s get %s:%s", k, v, k, v2)
+		}
+	}
+
+
+}
+
+
+func TestDemo(t *testing.T) {
+
+	kv := NewKVStore("/chen/test", false, 128, 32*1024)
+	key, value := "abc", "def"
+	kv.Put(key, value)
+	fmt.Println(kv.Get(key))
 
 
 }

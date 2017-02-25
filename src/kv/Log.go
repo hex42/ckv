@@ -153,11 +153,51 @@ func (l *Log) Close() bool {
 
 
 func (l *Log) Size() int64 {
+	size := int64(0)
+	logFiles := l.AllLogFiles()
+	for _, logFile := range logFiles {
+		if logFile != l.logFile {
+			fd, ok := l.cacheFd[logFile]
+			if !ok {
+				fd, _ = os.Open(logFile)
+				l.cacheFd[logFile] = fd
+			}
+			fileInfo, _ := fd.Stat()
+			size += fileInfo.Size()
+			continue
+		}
+		fileInfo, _ := l.fd.Stat()
+		size += fileInfo.Size()
+	}
+	return size
 
 }
 
-
+// 
 func (l *Log) RemoveLogFile(logFile string) bool {
+	if logFile == l.logFile {
+		return false
+	}
+
+	logFiles := l.AllLogFiles()
+	b := false
+	for i:=0; i<len(logFiles)-1; i+=1 {
+		if logFiles[i] == logFile {
+			b=true
+		}
+	}
+
+	if !b {
+		return false
+	}
+
+	fd, ok := l.cacheFd[logFile]
+	if ok {
+		fd.Close()
+		delete(l.cacheFd, logFile)
+	}
+	os.Remove(logFile)
+	return true 
 
 }
 
@@ -428,3 +468,5 @@ func bubbleSort(v []int) {
 	}
 
 }
+
+
