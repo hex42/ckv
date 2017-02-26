@@ -17,28 +17,38 @@ func main() {
   	stdin := bufio.NewReader(os.Stdin)
 
   	for {
+
   		fmt.Print(">")
   		line, _ := stdin.ReadString(byte('\n'))
   		op, k, v, e := parseLine(line)
 
+  		//fmt.Printf("op:%s k:%s v:%s e:%s", op, k, v, e)
   		if e != "" {
   			fmt.Printf("%s\n", e)
   			continue
   		}
+
+  		
   		if op == "put" {
   			cache.Put(k, v)
-  		}
-  		if op == 'get' {
-  			fmt.Println(cache.Get(k))
-  		}
-  		if op == 'del' {
-  			cache.Del(k)
+  			fmt.Println("put done")
+
   		}
 
-  		if op == 'exit' {
+  		if op == "get" {
+  			fmt.Println(cache.Get(k))
+  		}
+
+  		if op == "del" {
+  			cache.Del(k)
+  			fmt.Println("del done")
+  		}
+
+  		if op == "exit" {
   			cache.Close()
   			return
   		}
+  		
 
   	}
 
@@ -47,93 +57,135 @@ func main() {
 
 
 func parseLine(line string) (string, string, string, string) {
-	command, key, value, err := "", "", "", ""
-	i:=0
-	size := len(line)
-	for i < size {
-		if line[i] == "\t" || line[i] == " "{
-			i+=1
-		}else{
-			break
-		}
+
+	i := 0
+	command, key, value := "", "", "" 
+
+	command, errMsg, i:= readCommand(i, line)
+
+	if errMsg != "" {
+		return command, key, value, errMsg
 	}
 
-	if i+3 > size {
-		return op, key, value, "expecting put, del, get or exit command"
-	}
-	command := line[i:i+3]
-	if command != put && command != "get" && command != "del" {
-		if i+4 > size {
-			return op, key, value, "expecting put, del, get or exit command"
-		}
-		command := line[i:i+4]
-		if command != "exit" {
-			return op, key, value, "expecting put, del, get or exit command"
-		}
-	}
 
-	i+=3
 	if command == "exit"{
-		i = check(i, line)
-		return command, key, value, err
+		
+		errMsg = check(i, line)
+		return command, key, value, errMsg
 	}
 
 	if command == "del" || command == "get" {
-		key, i = readString(i, line)
-		i = check(i, line)
+		key, errMsg, i = readString(i, line)
+		if errMsg != "" {
+			return command, key, value, errMsg
+		}
+		errMsg = check(i, line)
+		return command, key, value, errMsg
+
+
 
 	}
 
 	if command == "put" {
-		key, i = readString(i,line )
-		value, i = readString(i, line)
-		i = check(i, line)
+		key,  errMsg, i = readString(i,line )
+		if errMsg != "" {
+			return command, key, value, errMsg
+		}
+		value, errMsg, i = readString(i, line)
+		if errMsg != "" {
+			return command, key, value, errMsg
+		}
+		errMsg = check(i, line)
+
+		if errMsg != "" {
+			return command, key, value, errMsg
+		}
 
 	}
 
-	if i!= -1 {
-		return commnd, key, value, err
-	}
-
-	return commadn, key, value, "wrong"
-
+	return command, key, value, errMsg
 
 }
 
 
-def readString(i int, s string) string {
-	i:=0
+
+func readCommand(i int, s string) (string, string, int) {
+	command := ""
+	i = skip(i, s)
+	errMsg := "expecting put, del, get or exit command"
+	if i+3 > len(s) {
+		return command, errMsg, i
+	}
+	command = s[i:i+3]
+	if command != "put" && command != "get" && command != "del" {
+		if i+4 > len(s) {
+			return command, errMsg, i
+		}
+		command = s[i:i+4]
+		if command != "exit" {
+			return command, errMsg, i
+		}
+	}
+
+	return command, "", i+len(command)
+
+}
+
+func readString(i int, s string) (string, string, int) {
+	begin := skip(i, s)
+	key := ""
+	errMsg := "expecting symbol \""
+	if begin == len(s) {
+		return key, errMsg, begin
+	}
+	if string(s[begin]) != "\"" {
+		return key, errMsg,begin
+	}
+	i = begin+1
 	for i < len(s) {
-		if line[i] == "\t" || line[i] == " "{
+		if string(s[i]) != "\"" {
 			i+=1
 		}else{
 			break
 		}
 	}
-	if s[i] != "\"" {
-		return -1
+
+	if i== len(s) {
+		return key, errMsg, begin
 	}
-	i+= 1
-	for i < len(s) {
-		if s[i] != "\"" {
+
+	return s[begin+1:i], "", i+1
+
+}
+
+
+func skip(i int, s string) int {
+	size := len(s)
+	for i < size {
+		if string(s[i]) == "\t" || string(s[i]) == " "{
 			i+=1
 		}else{
 			break
 		}
 	}
-	return s[begin:i]
+	return i
 
 }
 
 
-def check(i int, s string) bool {
 
+func check(i int, s string) string {
+	if i >= len(s) {
+		return "expecting a new line symbol"
+	}
 	for i < len(s) {
-		if s[i] != " " || s[i] != "\n" || s[i] != "\t" {
-			return false
+		e := string(s[i])
+		if e != " " && e != "\n" && e != "\t" {
+			return  fmt.Sprintf("not expecting %s", e)
 		} 
+		i+=1
 	}
-	return true
+	return ""
 }
 
 
