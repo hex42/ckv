@@ -43,6 +43,7 @@ func NewLRUItem(r *Record) *LRUItem {
 
 
 func (l *LRU) Put(e *LRUItem) {
+
 	if e==nil {
 		panic("LRUItem is nil")
 	}
@@ -101,6 +102,36 @@ func (l *LRU) Update(e *LRUItem) {
 	l.head = e
 	return 
 	
+}
+
+
+// e must be an element of lru
+func (l *LRU) Delete(e *LRUItem) {
+	if l.head == l.tail {
+		l.head, l.tail = nil, nil
+		e.previous = nil
+		e.next = nil
+		return
+	}
+
+	if e == l.tail {
+		l.tail = e.previous
+		e.previous.next = nil
+		e.previous = nil
+		return 
+	}
+
+	if e == l.head {
+		l.head = e.next
+		e.next.previous = nil
+		e.next = nil
+		return
+	}
+
+	e.next.previous = e.previous
+	e.previous.next = e.next
+	e.previous, e.next = nil, nil
+
 }
 
 // kv pair的value不能为空
@@ -210,24 +241,33 @@ func (kv *KVStore) build() bool {
 }
 
 
-// 应该要shrink的标准是啥
-func (kv *KVStore) shrink() {
-
+// shrink n files 
+func (kv *KVStore) Shrink(n int) {
+	/*
 	if !kv.isShrinkable() {
 		return 
 	}
+	*/
 	logFiles := kv.log.AllLogFiles()
-	size := len(logFiles)
+	size := len(logFiles)-1
+
+	for i:=0; i <= size && i <= n; i+=1 {
+		fmt.Printf("shrink file %s", logFiles[i])
+		kv.shrinkFile(logFiles[i])
+
+	}
+	/*
 	logFiles = logFiles[0:size-1]
 	for _, logFile := range logFiles {
 		kv.shrinkFile(logFile)
 	}
+	*/
 
 	
 
 }
 
-//
+
 func (kv *KVStore) shrinkFile(logFile string) {
 	records, offsets := kv.log.ReadLogFile(logFile)
 	size := len(records)
@@ -243,7 +283,7 @@ func (kv *KVStore) shrinkFile(logFile string) {
 	kv.log.RemoveLogFile(logFile)
 }
 
-// 
+
 func (kv *KVStore) isShrinkable() bool {
 	avgSize := float32(kv.memSize) / float32(len(kv.mem))
 	avgSize2 := float32(kv.log.Size()) / float32(len(kv.index))

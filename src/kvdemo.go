@@ -11,9 +11,11 @@ func main() {
    
   	if len(os.Args) != 2 {
   		fmt.Println("error only need the dir for kv")
+  		os.Exit(-1)
   	}
 
-  	cache := kv.NewKVStore("/chen/test", false, 1024, 1024*1024)
+  	dir := os.Args[1]
+  	cache := kv.NewKVStore(dir, true, 0, 1024*1024)
   	stdin := bufio.NewReader(os.Stdin)
 
   	for {
@@ -36,7 +38,12 @@ func main() {
   		}
 
   		if op == "get" {
-  			fmt.Println(cache.Get(k))
+  			value := cache.Get(k)
+  			if value == ""{
+  				fmt.Printf("key %s doesn't exist\n", k)
+  			}else{
+  				fmt.Println(cache.Get(k))
+  			}
   		}
 
   		if op == "del" {
@@ -53,7 +60,6 @@ func main() {
   	}
 
 }
-
 
 
 func parseLine(line string) (string, string, string, string) {
@@ -150,8 +156,12 @@ func readString(i int, s string) (string, string, int) {
 		}
 	}
 
-	if i== len(s) {
-		return key, errMsg, begin
+	if i==begin+1 {
+		errMsg = "string can't be empty"
+		return key, errMsg, i
+	}
+	if i== len(s) || i==begin+1{
+		return key, errMsg, i
 	}
 
 	return s[begin+1:i], "", i+1
@@ -171,7 +181,6 @@ func skip(i int, s string) int {
 	return i
 
 }
-
 
 
 func check(i int, s string) string {
