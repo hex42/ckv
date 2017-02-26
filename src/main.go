@@ -1,8 +1,9 @@
 package main
 
 import (
-    "kv"
-  
+//    "kv"
+    "bufio"
+  	"os"
     "fmt"
     //"hash/crc32"
     //"io"
@@ -12,10 +13,19 @@ import (
 
 func main() {
 
-	m := map[string]string{"abc":"def", "def":"ggg"}
-    for a, b := range m {
-        fmt.Println(a,b)
+   for i, v := range os.Args {
+   		fmt.Println(i, v)
+	}
+
+    stdin := bufio.NewReader(os.Stdin)
+    //stdout := bufio.NewWriter(os.Stdout)
+    for {
+        fmt.Println(">")
+        c, _ := stdin.ReadString(byte('\n'))
+        fmt.Println(c)
+
     }
+
     
 }
 
