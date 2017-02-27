@@ -169,7 +169,7 @@ func readString(i int, s string) (string, string, int) {
 		errMsg = "string can't be empty"
 		return key, errMsg, i
 	}
-	if i== len(s) || i==begin+1{
+	if i== len(s) || i==begin+1 {
 		return key, errMsg, i
 	}
 

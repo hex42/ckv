@@ -217,9 +217,16 @@ func (kv *KVStore) Close() bool {
 	return true
 }
 
-func (kv *KVStore) GetVersion() bool {
-	
-	return true
+func (kv *KVStore) GetVersion() string {
+	minVersion := 0
+	for _, offset := range kv.index {
+		version := str2Int(findDigit(off.logFile))
+		if version < minVersion {
+			minVersion = version
+		}
+	}
+
+	return fmt.Sprintf("%d.log", minVersion)
 	
 }
 
