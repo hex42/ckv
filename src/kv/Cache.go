@@ -263,7 +263,6 @@ func (kv *KVStore) Shrink(n int) {
 	}
 	*/
 
-
 }
 
 

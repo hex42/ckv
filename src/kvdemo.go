@@ -10,7 +10,7 @@ import (
 func main() {
    
   	if len(os.Args) != 2 {
-  		fmt.Println("error only need the dir for kv")
+  		fmt.Println("Error: 需要初始化kv的存储目录 例如 go run ./kvdemo.go /chen/test\n")
   		os.Exit(-1)
   	}
 
