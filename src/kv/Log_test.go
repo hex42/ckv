@@ -10,13 +10,13 @@ import (
 
 
 func TestLog(t *testing.T) {
-	log := NewLog("d://fortest", 1024*1024, false, 1024)
+	log := NewLog("/chen/test", 1024*1024, false, 1024)
 
 	records, offsets := log.ReadLogFile("0.log")
 	fmt.Printf("reading logfile 0.log read %d record\n", len(records))
 	log.Close()
 
-	log = NewLog("d://fortest", 32*1024, false, 128)
+	log = NewLog("/chen/test", 32*1024, false, 128)
 	
 	rand.Seed(int64(time.Now().Nanosecond()))
 
@@ -96,87 +96,48 @@ func TestLog(t *testing.T) {
 
 }
 
-/*
 
-func TestLogAsyncAppend(t *testing.T) {
-	log := NewLog("d://fortest", 16*1024*1024, false, 1024*16)
-	//seed := make([]int, 1024*1024)
-	record := NewRecord("P", "abc", "def")
-	log.Append(record)
+func TestSort(t *testing.T) {
 
-}
+	rand.Seed(int64(time.Now().Nanosecond()))
+	size := rand.Int() % 2048
+	if size == 0 {
+		size = 2048
+	}
+	v := make([]int, size)
+	for i, _ := range v {
+		v[i] = rand.Int()
+	}
+	bubbleSort(v)
+	errMsg := ""
+	for i:=0; i<len(v)-1; i+=1 {
+		if v[i] > v[i+1] {
+			errMsg = fmt.Sprintf("bubbleSortError: %d at position %d but %d at position %d\n", v[i], i, v[i+1], i+1)
+			panic(errMsg)
 
-
-func TestLogSyncAppend(t *testing.T) {
-
-	log := NewLog("d://fortest", 1024*4, true, 0)
-	seed := make([]int, 1024*1024)
-	fmt.Println(len(seed))
-	for i, _ := range seed {
-		seed[i] = i+1
-		key, value := fmt.Sprintf("%d", i), fmt.Sprintf("%d", seed[i])
-		record := NewRecord("P", key, value)
-		fmt.Println(key, value)
-		log.Append(record)
-
+		}
 	}
 
+	v = []int{1}
+	bubbleSort(v)
 
-}
-
-*/
-
-
-/*
-func TestReadLogFile(t *testing.T) {
-	log := NewLog("d://fortest", 1024*1024, true, 1024*16)
-	records, _ := log.ReadLogFile("3.log")
-	for _, record := range records {
-		fmt.Printf("%s %s", record.key, record.value)
+	size = rand.Int() % 1048576
+	if size == 0 {
+		size = 1048576
 	}
-	log.Close()
-}
-
-/*
-
-
-/*
-func TestNewRecord(t *testing.T) {
-
-	r := NewRecord("D", "DDD", "def")
-	r2 := NewRecord("P", "DDD", "DDD")
-	fmt.Println(r.ToBytes())
-	fmt.Println(r2.ToBytes())
-}
-
-func BeachmarkLogAsyncAppend(t *testing.T) {
-	log := NewLog("d://fortest", 16*1024*1024, false, 1024*16)
-	seed := make([]int, 1024*1024)
-	fmt.Println(len(seed))
-	for i, _ := range seed {
-		seed[i] = i+1
-		key, value := fmt.Sprintf("%d", i), fmt.Sprintf("%d", seed[i])
-		record := NewRecord("D", key, value)
-		log.Append(record)
-
+	v = make([]int, size)
+	for i, _ := range v {
+		v[i] = rand.Int()
 	}
 
-}
+	quickSort(v)
 
-func BeachmarkLogSyncAppend(t *testing.T) {
-
-	log := NewLog("d://fortest", 16*1024*1024, true, 1024*16)
-	seed := make([]int, 1024*1024)
-	fmt.Println(len(seed))
-	for i, _ := range seed {
-		seed[i] = i+1
-		key, value := fmt.Sprintf("%d", i), fmt.Sprintf("%d", seed[i])
-		record := NewRecord("D", key, value)
-		log.Append(record)
-
+	for i:=0; i<len(v)-1; i+=1 {
+		if v[i] > v[i+1] {
+			errMsg = fmt.Sprintf("quickSortError: %d at position %d but %d at position %d\n", v[i], i, v[i+1], i+1)
+			panic(errMsg)
+		}
 	}
-
-
+	
 }
 
-*/

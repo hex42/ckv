@@ -217,8 +217,8 @@ func (kv *KVStore) Close() bool {
 	return true
 }
 
-func (kv *KVStore) Snapshot() bool {
-	//找出最小的offset
+func (kv *KVStore) GetVersion() bool {
+	
 	return true
 	
 }
@@ -241,17 +241,17 @@ func (kv *KVStore) build() bool {
 }
 
 
-// shrink n files 
+// 对前n个日志文件进行压缩
 func (kv *KVStore) Shrink(n int) {
-	/*
+	
 	if !kv.isShrinkable() {
 		return 
 	}
-	*/
+	
 	logFiles := kv.log.AllLogFiles()
-	size := len(logFiles)-1
+	size := len(logFiles)
 
-	for i:=0; i <= size && i <= n; i+=1 {
+	for i:=0; i < size && i < n; i+=1 {
 		fmt.Printf("shrink file %s", logFiles[i])
 		kv.shrinkFile(logFiles[i])
 
@@ -263,7 +263,6 @@ func (kv *KVStore) Shrink(n int) {
 	}
 	*/
 
-	
 
 }
 

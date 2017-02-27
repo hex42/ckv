@@ -5,7 +5,7 @@ import (
     "fmt"
     "io/ioutil"
     "hash/crc32"
-    //"sort"
+    "math/rand"
 )
 
 
@@ -28,7 +28,7 @@ type offSet struct {
 	off      int64
 }
  
-//如果当个kv的大小超过
+//如果当个kv的大小超过capacity的时候 offset的off字段设置成-1，后面可以改造成支持kv分片的格式
 func (l *Log) Append(record *Record) *offSet {
 	bytes := record.ToBytes()
 	size := int64(len(bytes))
@@ -118,7 +118,6 @@ func (l *Log) ReadAt(offset *offSet) *Record {
 
 	off += int64(vsize) 
 	//fmt.Println("each record:", op,len(checksum), ksize, vsize,key, value, off)
-	// if needed should check the checksum
 	return &Record{op: op, key: key, value: value, checksum: checksum}
 }
 
@@ -254,7 +253,7 @@ func (l *Log) AllLogFiles() []string {
 
 
 
-// 验证一个日志的文件名称符合xxx.log的格式，xxx是一个整数
+// 验证一个日志的文件名称符合x.log的格式，x是一个整数
 func isLogFileName(filename string) bool {
 	i := 0
 	for {
@@ -275,7 +274,7 @@ func isLogFileName(filename string) bool {
 
 }
 
-// if sync = true syncSize should be 0
+// 如果sync = true， syncSize 应该被设置成 0
 func NewLog(dir string, capacity int64, sync bool, syncSize int64) *Log {
 	os.MkdirAll(dir, os.ModeDir)
 	os.Chdir(dir)
@@ -337,7 +336,7 @@ type Record struct {
 }
 
 
-//Record的格式 op|ksize|vsize|checksum|key|value op id limited to P or D
+//Record的格式 op|ksize|vsize|checksum|key|value op is limited to P or D
 func (r *Record) ToBytes() []byte {
 	ksize := int2Byte(len(r.key))
 	vsize := int2Byte(len(r.value))	
@@ -347,7 +346,7 @@ func (r *Record) ToBytes() []byte {
 		
 }
 
-//8 是ksize+vsize
+//8 是4个字节的ksize+4个字节的vsize
 func (r *Record) Size() int64 {
 	return int64(len(r.op) + len(r.checksum) + len(r.key) + len(r.value) + 8)
 }
@@ -359,7 +358,6 @@ func NewRecord(op string, key string, value string) *Record {
 		value = ""
 	}
 	content := []byte(key+value)
-	//这里的int转换可能会造成
 	checksum := int2Byte(int(crc32.ChecksumIEEE(content)) )
 	return &Record{key:key, value:value, op:op, checksum: string(checksum) }
 }
@@ -469,4 +467,45 @@ func bubbleSort(v []int) {
 
 }
 
+
+func quickSort(v []int) {
+	size := len(v)
+	//fmt.Println(size)
+	if size < 15 {
+		bubbleSort(v) 
+		return
+	}
+
+	pivot := rand.Int() % size 
+	v[0], v[pivot] = v[pivot], v[0]
+	begin, end := 1, size - 1
+	for begin < end {
+		for begin < end {
+			if v[begin] > v[0] {
+				break
+			}
+
+			begin += 1
+		}
+
+		for begin < end {
+			if v[end] <=  v[0] {
+				break
+			}
+			end -= 1
+		}
+		v[begin], v[end] = v[end], v[begin]
+	}
+
+	if v[begin] <= v[0] {
+		quickSort(v[0:begin+1])
+		quickSort(v[begin+1:size])
+	
+	}else {
+		quickSort(v[0:begin])
+		quickSort(v[begin:size])
+	}
+	return 
+
+}
 

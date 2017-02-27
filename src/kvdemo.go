@@ -17,16 +17,28 @@ func main() {
   	dir := os.Args[1]
   	cache := kv.NewKVStore(dir, true, 0, 1024*1024)
   	stdin := bufio.NewReader(os.Stdin)
+  	helpInfo := `
+支持下列命令:
+	put "key" "value"
+	get "key"
+	del "key"
+	以及 exit
+`
+	fmt.Println(helpInfo)
 
   	for {
 
   		fmt.Print(">")
   		line, _ := stdin.ReadString(byte('\n'))
+
+  		if check(0, line) == "" {
+  			continue
+  		}
   		op, k, v, e := parseLine(line)
 
-  		//fmt.Printf("op:%s k:%s v:%s e:%s", op, k, v, e)
+ 		//fmt.Printf("op:%s k:%s v:%s e:%s", op, k, v, e)
   		if e != "" {
-  			fmt.Printf("%s\n", e)
+  			fmt.Printf("Error: %s\n", e)
   			continue
   		}
 
@@ -35,28 +47,23 @@ func main() {
   			cache.Put(k, v)
   			fmt.Println("put done")
 
-  		}
-
-  		if op == "get" {
+  		}else if op == "get" {
   			value := cache.Get(k)
   			if value == ""{
   				fmt.Printf("key %s doesn't exist\n", k)
   			}else{
   				fmt.Println(cache.Get(k))
   			}
-  		}
 
-  		if op == "del" {
+  		}else if op == "del" {
   			cache.Del(k)
   			fmt.Println("del done")
-  		}
 
-  		if op == "exit" {
+  		}else if op == "exit" {
   			cache.Close()
   			return
   		}
   		
-
   	}
 
 }
@@ -93,6 +100,7 @@ func parseLine(line string) (string, string, string, string) {
 	}
 
 	if command == "put" {
+		
 		key,  errMsg, i = readString(i,line )
 		if errMsg != "" {
 			return command, key, value, errMsg
@@ -101,6 +109,7 @@ func parseLine(line string) (string, string, string, string) {
 		if errMsg != "" {
 			return command, key, value, errMsg
 		}
+		
 		errMsg = check(i, line)
 
 		if errMsg != "" {
@@ -168,7 +177,7 @@ func readString(i int, s string) (string, string, int) {
 
 }
 
-
+// 跳过所有的空格符
 func skip(i int, s string) int {
 	size := len(s)
 	for i < size {
