@@ -16,7 +16,7 @@ func TestLog(t *testing.T) {
 	fmt.Printf("reading logfile 0.log read %d record\n", len(records))
 	log.Close()
 
-	log = NewLog("/chen/test", 32*1024, false, 128)
+	log = NewLog("/chen/test", 32*1024, false, 1024)
 	
 	rand.Seed(int64(time.Now().Nanosecond()))
 

@@ -220,7 +220,7 @@ func (kv *KVStore) Close() bool {
 func (kv *KVStore) GetVersion() string {
 	minVersion := 0
 	for _, offset := range kv.index {
-		version := str2Int(findDigit(off.logFile))
+		version := str2Int(findDigit(offset.logFile))
 		if version < minVersion {
 			minVersion = version
 		}
@@ -243,7 +243,7 @@ func (kv *KVStore) build() bool {
 
 		}
 	}
-	fmt.Printf("building kv successful\n")
+	fmt.Printf("building kv successfully\n")
 	return true
 }
 

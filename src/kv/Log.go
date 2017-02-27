@@ -172,7 +172,7 @@ func (l *Log) Size() int64 {
 
 }
 
-// 
+//删除日志文件，同时删除缓存的fd
 func (l *Log) RemoveLogFile(logFile string) bool {
 	if logFile == l.logFile {
 		return false
@@ -290,8 +290,8 @@ func NewLog(dir string, capacity int64, sync bool, syncSize int64) *Log {
 
 	fmt.Println("writeAmount", writeAmount)
 	return &Log{dir:dir, logFile:logName, cacheFd:map[string]*os.File{}, fd:fd, 
-					buffer: make([]byte, 1024), capacity:capacity, sync:sync, syncSize:syncSize, 
-					writeSize:0, writeAmount:writeAmount }
+			buffer: make([]byte, 1024), capacity:capacity, sync:sync, 
+			syncSize:syncSize, writeSize:0, writeAmount:writeAmount }
 }
 
 // 生成最新的日志名称
@@ -498,13 +498,12 @@ func quickSort(v []int) {
 	}
 
 	if v[begin] <= v[0] {
-		quickSort(v[0:begin+1])
-		quickSort(v[begin+1:size])
-	
-	}else {
-		quickSort(v[0:begin])
-		quickSort(v[begin:size])
+		begin += 1	
 	}
+
+	quickSort(v[0:begin])
+	quickSort(v[begin:size])
+
 	return 
 
 }
