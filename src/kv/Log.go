@@ -477,11 +477,11 @@ func quickSort(v []int) {
 	}
 
 	pivot := rand.Int() % size 
-	v[0], v[pivot] = v[pivot], v[0]
-	begin, end := 1, size - 1
+	e := v[pivot]
+	begin, end := 0, size - 1
 	for begin < end {
 		for begin < end {
-			if v[begin] > v[0] {
+			if v[begin] > e {
 				break
 			}
 
@@ -489,7 +489,7 @@ func quickSort(v []int) {
 		}
 
 		for begin < end {
-			if v[end] <=  v[0] {
+			if v[end] <=  e {
 				break
 			}
 			end -= 1
@@ -497,12 +497,14 @@ func quickSort(v []int) {
 		v[begin], v[end] = v[end], v[begin]
 	}
 
-	if v[begin] <= v[0] {
+	if v[begin] <= e {
 		begin += 1	
 	}
 
 	quickSort(v[0:begin])
-	quickSort(v[begin:size])
+	if begin < size {
+		quickSort(v[begin:size])
+	}
 
 	return 
 
