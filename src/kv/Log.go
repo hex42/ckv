@@ -415,7 +415,7 @@ func int2Byte(i int) []byte {
         b = append(b, byte(mod))
         i = i/256
     }
-    for size := len(b); size < 4; size+=1{
+    for size := len(b); size < 4; size+=1 {
     	b = append(b, byte(0))
     }
     reverse(b)
@@ -424,7 +424,7 @@ func int2Byte(i int) []byte {
 
 func reverse(bytes []byte) {
 	size := len(bytes)
-	for i :=0; i<= size/2; i+=1 {
+	for i :=0; i< size/2; i+=1 {
 		bytes[i], bytes[size-1-i] = bytes[size-1-i], bytes[i]
 	}
 }

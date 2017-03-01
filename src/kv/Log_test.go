@@ -141,3 +141,24 @@ func TestSort(t *testing.T) {
 	
 }
 
+
+func TestReverse(t *testing.T) {
+	b := []byte("b")
+	reverse(b)
+	if string(b) != "b" {
+		panic("error")
+	}
+
+	b = []byte("abc")
+	reverse(b)
+	if string(b) != "cba" {
+		panic("error")
+	}
+
+	b = []byte("abcd")
+	reverse(b)
+	if string(b) != "dcba" {
+		panic("error")
+	}
+}
+
