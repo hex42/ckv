@@ -422,6 +422,7 @@ func int2Byte(i int) []byte {
     return b
 }
 
+
 func reverse(bytes []byte) {
 	size := len(bytes)
 	for i :=0; i< size/2; i+=1 {
